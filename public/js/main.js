@@ -35,6 +35,28 @@ function makeHtmlTable(products) {
 }
 
 //-------------------------------------------------------------------------------------
+// MENSAJES
+// Definimos un esquema de autor
+const schemaAuthor = new normalizr.schema.Entity(
+  "author",
+  {},
+  { idAttribute: "id" }
+);
+
+// Definimos un esquema de mensaje
+const schemaMensaje = new normalizr.schema.Entity(
+  "post",
+  { author: schemaAuthor },
+  { idAttribute: "_id" }
+);
+
+// Definimos un esquema de posts
+const schemaMensajes = new normalizr.schema.Entity(
+  "posts",
+  { mensajes: [schemaMensaje] },
+  { idAttribute: "id" }
+);
+/* ----------------------------------------------------------------------------- */
 
 const inputAddEmail = document.querySelector("#inputAddEmail");
 const inputAddName = document.querySelector("#inputAddName");
@@ -51,7 +73,7 @@ formMessage.addEventListener("submit", (e) => {
 
   //const message = { author: inputAddEmail.value, text: inputMessage.value };
   const message = {
-    author: inputAddEmail.value,
+    email: inputAddEmail.value,
     name: inputAddName.value,
     surname: inputAddSurname.value,
     age: inputAddAge.value,
@@ -68,12 +90,13 @@ formMessage.addEventListener("submit", (e) => {
 const makeHtmlList = (messages) => {
   return messages
     .map((messages) => {
-      const { author, fyh, text } = messages;
+      const { email, fyh, text, avatar } = messages;
       return `
               <div>
-                  <b style="color:blue;">${author}</b>
+                  <b style="color:blue;">${email}</b>
                   [<span style="color:brown;">${fyh}</span>] :
                   <i style="color:green;">${text}</i>
+                  <img width="50" src="${avatar}" alt=" ">
               </div>
           `;
     })
@@ -82,11 +105,11 @@ const makeHtmlList = (messages) => {
 
 const makeNormalize = (messages) => {
   return messages.map((messages) => {
-    const { author, text, name, surname, age, alias, avatar } = messages;
+    const { email, text, name, surname, age, alias, avatar } = messages;
 
     return (messageNormalize = {
       author: {
-        id: author,
+        email: email,
         nombre: name,
         apellido: surname,
         edad: age,
@@ -111,9 +134,9 @@ const makeNormalize = (messages) => {
 // };
 
 //Definimos la entidad messageEntity
-//  const messageEntity = new schema.Entity("messageEntity");
+//   const messageEntity = new normalizr.schema.Entity("messageEntity");
 
-// const organigrama = new schema.Entity("organigrama", {
+// const organigrama = new normalizr.schema.Entity("organigrama", {
 //   gerente: messageEntity,
 //   encargado: messageEntity,
 //   empleados: [messageEntity],
@@ -125,15 +148,26 @@ function print(obj) {
 }
 
 socket.on("messages", (messages) => {
-  console.log(messages);
+  //console.log(messages);
   const html = makeHtmlList(messages);
 
   //----------------------------
-   const messagesNormalize = makeNormalize(messages);
-   console.log("messagesNormalize"+JSON.stringify(messagesNormalize));
-  //  const normalizeMessage = normalize(messagesNormalize, organigrama);
+  const messagesNormalize = makeNormalize(messages);
+  console.log("messagesNormalize" + JSON.stringify(messagesNormalize));
+  //  const normalizeMessage = normalizr(messagesNormalize, schemaMensaje);
   //  print(normalizeMessage);
   //----------------------------
+
+  // const mensajesNsize = JSON.stringify(messages).length;
+  // console.log(messages, mensajesNsize);
+  // const mensajesD = normalizr.denormalize(
+  //   messages.result,
+  //   schemaMensajes,
+  //   messages.entities
+  // );
+  // console.log(mensajesD);
+  // const mensajesDsize = JSON.stringify(mensajesD).length
+  // console.log(mensajesD, mensajesDsize);
 
   document.querySelector("#messages").innerHTML = html;
 });
