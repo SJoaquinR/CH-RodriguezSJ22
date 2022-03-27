@@ -1,0 +1,21 @@
+<%- include('./head.ejs') %>
+<div class="container mt-3">
+  <div class="jumbotron">
+    <h1>Login de Usuario</h1>
+    <br />
+    <form action="/login" method="post" autocomplete="off">
+      <div class="form-group">
+        <label for="nameUser">Ingrese su nombre</label>
+        <input
+          id="nameUser"
+          class="form-control"
+          type="text"
+          name="nameUser"
+          required
+        />
+      </div>
+      <button class="btn btn-success mt-3" id="btncl">Enviar</button>
+    </form>
+  </div>
+</div>
+<%- include('./body.ejs') %>
