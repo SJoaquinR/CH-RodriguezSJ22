@@ -11,11 +11,27 @@
           class="form-control"
           type="text"
           name="nameUser"
+          placeholder="Ingrese su nombre"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <input
+          id="password"
+          name="password"
+          placeholder="Ingrese su password"
+          class="form-control"
+          type="password"
           required
         />
       </div>
       <button class="btn btn-success mt-3" id="btncl">Enviar</button>
     </form>
+    <hr>
+    <div class="text-left">
+      <button class="btn btn-success my-3" onclick="location.href = '/register'">Ir a Register</button>
+      <button class="btn btn-success my-3" onclick="location.href = '/auth/facebook'">Login con Facebook</button>
+      </div>
   </div>
 </div>
-<%- include('./body.ejs') %>
+

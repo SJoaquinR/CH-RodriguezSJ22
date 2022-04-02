@@ -3,7 +3,13 @@
   <div class="jumbotron">
     <div class="form-group">
       <h1 class="alert alert-success">
-        Bienvenido, <%= datos.nameUser %>
+        Bienvenido, <%= datos.nombre %>
+        <br>
+        <img src="<%= datos.foto %>" width="100" alt=""><br>
+        <a href="#"><%= datos.email %></a>
+        <br>
+        <br>
+        
         <button
           class="btn btn-warning float-right mt-2"
           onclick="location.href='/logout'"
