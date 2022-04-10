@@ -1,4 +1,11 @@
 /* -------------------------------- Modulos -------------------------------- */
+const dotenv = require("dotenv");
+dotenv.config();
+
+const minimist = require("minimist");
+let defaultValues = { alias: { p: "puerto" }, default: { p: 8080 } };
+defaultValues = minimist(process.argv.slice(2), defaultValues);
+
 const { optionsMySql } = require("./containers/utils/optionsMySql");
 const { optionsSqlite } = require("./containers/utils/optionsSqlite");
 const { faker } = require("@faker-js/faker");
@@ -52,15 +59,15 @@ const messagesApi = new containerMessage(optionsSqlite);
 
 /*============================[Middlewares]============================*/
 
-const FACEBOOK_APP_ID = "1560866814294385";
-const FACEBOOK_APP_SECRET = "c80ade890236d8cb57e8634a8382e0da";
+// const FACEBOOK_APP_ID = "1560866814294385";
+// const FACEBOOK_APP_SECRET = "c80ade890236d8cb57e8634a8382e0da";
 
 /*-------- [Conf Passport]*/
 passport.use(
   new FacebookStrategy(
     {
-      clientID: FACEBOOK_APP_ID,
-      clientSecret: FACEBOOK_APP_SECRET,
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
       callbackURL: "http://localhost:8080/auth/facebook/callback",
       profileFields: ["id", "displayName", "photos", "email"],
     },
@@ -183,11 +190,10 @@ app.get("/datos", (req, res) => {
         datos: datosUsuario,
       });
     } else {
-      console.log('USuario no autentciado')
+      console.log("USuario no autentciado");
       res.redirect("/login");
     }
   }
-  
 
   // if (req.session.nameUser) {
   //   const datosUsuario = usuariosDB.find((usuario) => {
@@ -226,8 +232,20 @@ app.get("/logout", (req, res) => {
 });
 
 app.get("/info", (req, res) => {
-  res.send(req.sessionID);
+  // res.send(req.sessionID);
+  const sistema = [
+    `Argumento de entrada: ${process.argv}`,
+    `SO: ${process.platform}`,
+    `Version Node: ${process.version}`,
+    `Uso memoria: ${process.memoryUsage().rss}`,
+    `Path Ejecucion: ${process.title}`,
+    `Id del proceso: ${process.pid}`,
+    `Directorio: ${process.cwd()}`,
+  ]; 
+
+  res.send(sistema);
 });
+
 
 /*==================== Data Mocks====================*/
 
@@ -284,7 +302,7 @@ app.use(express.static("public"));
 
 /* -------------------------------- Server -------------------------------- */
 
-const PORT = 8080;
+const PORT = defaultValues.p;
 const server = httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${server.address().port}`);
 });
