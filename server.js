@@ -1,3 +1,17 @@
+//PM2-------------
+//pm2 start server.js --name="server" --watch -i max -- 8081 CLUSTER
+//pm2 start server.js --name="server" --watch -- 8081 FORK
+//FOREVER-------------
+
+//tasklist /fi "imagename eq node.exe"    //check if node is running lista todos los procesos de node.js activos
+ 
+//taskkill /pid <PID> /f  //kill a specific process by PID
+//taskkill /f /im node.exe  //kill all node.js processes mata un proceso por su nombre
+
+//fuser <PORT>/tcp [-k] //kill all processes listening on a port encuentra [y mata] al proceso ocupando el puerto PORT
+
+
+
 /* -------------------------------- Modulos -------------------------------- */
 const dotenv = require("dotenv");
 dotenv.config();
@@ -11,6 +25,11 @@ const { optionsSqlite } = require("./containers/utils/optionsSqlite");
 const { faker } = require("@faker-js/faker");
 const express = require("express");
 const path = require("path");
+
+const cluster = require("cluster");
+const numCPUs = require("os").cpus().length;;
+
+const modoCluster = process.argv[3] || "CLUSTER";
 
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
@@ -95,223 +114,243 @@ app.use(passport.session());
 /*============================[Base de Datos]============================*/
 const usuariosDB = [];
 
-app.get("/", (req, res) => {
-  if (req.session.nameUser) {
-    res.redirect("/datos");
-  } else {
-    res.redirect("/login");
-    //res.redirect("/auth/facebook");
-  }
-});
 
-// app.get("/", (req, res) => {
-//   res.render('pages/login.ejs');
-// });
+if (modoCluster && cluster.isMaster) {
+  console.log(`Numeros de procesadores ${numCPUs}`);
+  console.log(`Master ${process.pid} is running`);
 
-/*==================== Autenticacion ====================*/
-
-/*-------- [Passport facebook]*/
-app.get("/auth/facebook", passport.authenticate("facebook"));
-app.get(
-  "/auth/facebook/callback",
-  passport.authenticate("facebook", {
-    failureRedirect: "/",
-    successRedirect: "/datos",
-    authType: "reauthenticate",
-  })
-);
-/*-------- --------------------*/
-
-app.get("/login", (req, res) => {
-  res.render("pages/login.ejs");
-});
-
-app.post("/login", (req, res) => {
-  const { nameUser, password } = req.body;
-
-  const existeUsuario = usuariosDB.find(
-    (usuario) => usuario.nameUser == nameUser && usuario.password == password
-  );
-  //const nameUser = req.session?.nameUser;
-
-  if (!existeUsuario) {
-    res.render("pages/login-error");
-  } else {
-    req.session.nameUser = nameUser;
-    req.session.password = password;
-    res.redirect("/datos");
-    // res.render(path.join(process.cwd(), "/views/pages/logout.ejs"), {
-    // nameUser,
-    //});
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
   }
 
-  // if (!nameUser) {
-  //   res.redirect("/");
-  // } else {
-  //   res.render(path.join(process.cwd(), '/views/pages/logout.ejs'), { nameUser })
-  // }
-});
-
-app.get("/register", (req, res) => {
-  res.render("pages/register");
-});
-
-app.post("/register", (req, res) => {
-  const { nameUser, password } = req.body;
-  const newUsuario = usuariosDB.find((usuario) => usuario.nameUser == nameUser);
-
-  if (newUsuario) {
-    res.render("pages/register-error");
-  } else {
-    usuariosDB.push({ nameUser, password });
-    res.redirect("/login");
-  }
-});
-
-app.get("/datos", (req, res) => {
-  if (req.isAuthenticated()) {
-    const datosUsuario = {
-      nombre: req.user.displayName,
-      foto: req.user.photos[0].value,
-      email: "req.user.email",
-    };
-    res.render(path.join(process.cwd(), "/views/pages/facebook.ejs"), {
-      datos: datosUsuario,
-    });
-  } else {
+  cluster.on("exit", (worker) => {
+    console.log(
+      `worker ${worker.process.pid} died`,
+      new Date().toLocaleString()
+    );
+    cluster.fork();
+  });
+} else {
+  app.get("/", (req, res) => {
     if (req.session.nameUser) {
-      const datosUsuario = usuariosDB.find((usuario) => {
-        return (
-          usuario.nameUser == req.session.nameUser &&
-          usuario.password == req.session.password
-        );
-      });
-      res.render(path.join(process.cwd(), "/views/pages/logout.ejs"), {
+      res.redirect("/datos");
+    } else {
+      res.redirect("/login");
+      //res.redirect("/auth/facebook");
+    }
+  });
+
+  // app.get("/", (req, res) => {
+  //   res.render('pages/login.ejs');
+  // });
+
+  /*==================== Autenticacion ====================*/
+
+  /*-------- [Passport facebook]*/
+  app.get("/auth/facebook", passport.authenticate("facebook"));
+  app.get(
+    "/auth/facebook/callback",
+    passport.authenticate("facebook", {
+      failureRedirect: "/",
+      successRedirect: "/datos",
+      authType: "reauthenticate",
+    })
+  );
+  /*-------- --------------------*/
+
+  app.get("/login", (req, res) => {
+    res.render("pages/login.ejs");
+  });
+
+  app.post("/login", (req, res) => {
+    const { nameUser, password } = req.body;
+
+    const existeUsuario = usuariosDB.find(
+      (usuario) => usuario.nameUser == nameUser && usuario.password == password
+    );
+    //const nameUser = req.session?.nameUser;
+
+    if (!existeUsuario) {
+      res.render("pages/login-error");
+    } else {
+      req.session.nameUser = nameUser;
+      req.session.password = password;
+      res.redirect("/datos");
+      // res.render(path.join(process.cwd(), "/views/pages/logout.ejs"), {
+      // nameUser,
+      //});
+    }
+
+    // if (!nameUser) {
+    //   res.redirect("/");
+    // } else {
+    //   res.render(path.join(process.cwd(), '/views/pages/logout.ejs'), { nameUser })
+    // }
+  });
+
+  app.get("/register", (req, res) => {
+    res.render("pages/register");
+  });
+
+  app.post("/register", (req, res) => {
+    const { nameUser, password } = req.body;
+    const newUsuario = usuariosDB.find(
+      (usuario) => usuario.nameUser == nameUser
+    );
+
+    if (newUsuario) {
+      res.render("pages/register-error");
+    } else {
+      usuariosDB.push({ nameUser, password });
+      res.redirect("/login");
+    }
+  });
+
+  app.get("/datos", (req, res) => {
+    if (req.isAuthenticated()) {
+      const datosUsuario = {
+        nombre: req.user.displayName,
+        foto: req.user.photos[0].value,
+        email: "req.user.email",
+      };
+      res.render(path.join(process.cwd(), "/views/pages/facebook.ejs"), {
         datos: datosUsuario,
       });
     } else {
-      console.log("USuario no autentciado");
-      res.redirect("/login");
-    }
-  }
-
-  // if (req.session.nameUser) {
-  //   const datosUsuario = usuariosDB.find((usuario) => {
-  //     return (
-  //       usuario.nameUser == req.session.nameUser &&
-  //       usuario.password == req.session.password
-  //     );
-  //   });
-  //   res.render(path.join(process.cwd(), "/views/pages/logout.ejs"), {
-  //     datos: datosUsuario,
-  //   });
-  // res.render("pages/logout", {
-  //   datos: datosUsuario,
-  // });
-  // } else {
-  //   res.redirect("/login");
-  // }
-});
-
-app.get("/logout", (req, res) => {
-  const nameUser = req.session?.nameUser;
-  if (nameUser) {
-    req.session.destroy((err) => {
-      if (!err) {
-        res.render(path.join(process.cwd(), "/views/pages/chau.ejs"), {
-          nameUser,
+      if (req.session.nameUser) {
+        const datosUsuario = usuariosDB.find((usuario) => {
+          return (
+            usuario.nameUser == req.session.nameUser &&
+            usuario.password == req.session.password
+          );
+        });
+        res.render(path.join(process.cwd(), "/views/pages/logout.ejs"), {
+          datos: datosUsuario,
         });
       } else {
+        console.log("USuario no autentciado");
         res.redirect("/login");
       }
-    });
-  } else {
-    req.logout();
-    res.redirect("/login");
+    }
+
+    // if (req.session.nameUser) {
+    //   const datosUsuario = usuariosDB.find((usuario) => {
+    //     return (
+    //       usuario.nameUser == req.session.nameUser &&
+    //       usuario.password == req.session.password
+    //     );
+    //   });
+    //   res.render(path.join(process.cwd(), "/views/pages/logout.ejs"), {
+    //     datos: datosUsuario,
+    //   });
+    // res.render("pages/logout", {
+    //   datos: datosUsuario,
+    // });
+    // } else {
+    //   res.redirect("/login");
+    // }
+  });
+
+  app.get("/logout", (req, res) => {
+    const nameUser = req.session?.nameUser;
+    if (nameUser) {
+      req.session.destroy((err) => {
+        if (!err) {
+          res.render(path.join(process.cwd(), "/views/pages/chau.ejs"), {
+            nameUser,
+          });
+        } else {
+          res.redirect("/login");
+        }
+      });
+    } else {
+      req.logout();
+      res.redirect("/login");
+    }
+  });
+
+  app.get("/info", (req, res) => {
+    // res.send(req.sessionID);
+    const sistema = [
+      `Argumento de entrada: ${process.argv}`,
+      `SO: ${process.platform}`,
+      `Version Node: ${process.version}`,
+      `Uso memoria: ${process.memoryUsage().rss}`,
+      `Path Ejecucion: ${process.title}`,
+      `Id del proceso: ${process.pid}`,
+      `Directorio: ${process.cwd()}`,
+      `Numeros de procesadores ${numCPUs}`,
+    ];
+
+    res.send(sistema);
+  });
+
+  /*==================== Data Mocks====================*/
+
+  function generarRandomObjeto() {
+    return {
+      nombre: faker.name.findName(),
+      precio: faker.finance.amount(),
+      imagen: faker.image.sports(),
+    };
   }
-});
 
-app.get("/info", (req, res) => {
-  // res.send(req.sessionID);
-  const sistema = [
-    `Argumento de entrada: ${process.argv}`,
-    `SO: ${process.platform}`,
-    `Version Node: ${process.version}`,
-    `Uso memoria: ${process.memoryUsage().rss}`,
-    `Path Ejecucion: ${process.title}`,
-    `Id del proceso: ${process.pid}`,
-    `Directorio: ${process.cwd()}`,
-  ]; 
+  app.get("/api/productos-test", (req, res) => {
+    let objs = [];
 
-  res.send(sistema);
-});
+    for (let index = 0; index < 5; index++) {
+      objs.push(generarRandomObjeto());
+    }
 
+    res.json(objs);
+  });
 
-/*==================== Data Mocks====================*/
+  /* ---------------------- Socket ----------------------*/
+  io.on("connection", async (socket) => {
+    console.log(`Nuevo cliente conectado! ${socket.id}`);
 
-function generarRandomObjeto() {
-  return {
-    nombre: faker.name.findName(),
-    precio: faker.finance.amount(),
-    imagen: faker.image.sports(),
-  };
-}
-
-app.get("/api/productos-test", (req, res) => {
-  let objs = [];
-
-  for (let index = 0; index < 5; index++) {
-    objs.push(generarRandomObjeto());
-  }
-
-  res.json(objs);
-});
-
-/* ---------------------- Socket ----------------------*/
-io.on("connection", async (socket) => {
-  console.log(`Nuevo cliente conectado! ${socket.id}`);
-
-  // // Listar productos
-  let responseProducts = await productsApi.listAll();
-  socket.emit("products", responseProducts);
-
-  // // Agrego productos
-  socket.on("addProduct", async (product) => {
-    await productsApi.save(product);
-
+    // // Listar productos
     let responseProducts = await productsApi.listAll();
-    io.sockets.emit("products", responseProducts);
+    socket.emit("products", responseProducts);
+
+    // // Agrego productos
+    socket.on("addProduct", async (product) => {
+      await productsApi.save(product);
+
+      let responseProducts = await productsApi.listAll();
+      io.sockets.emit("products", responseProducts);
+    });
+
+    // Listar mensajes
+    socket.emit("messages", await messagesApi.listAll());
+
+    // Agrego mensaje
+    socket.on("newMessage", async (mensaje) => {
+      mensaje.fyh = new Date().toLocaleString();
+      await messagesApi.save(mensaje);
+      io.sockets.emit("messages", await messagesApi.listAll());
+    });
   });
 
-  // Listar mensajes
-  socket.emit("messages", await messagesApi.listAll());
+  /* -------------------------------- Middlewares -------------------------------- */
 
-  // Agrego mensaje
-  socket.on("newMessage", async (mensaje) => {
-    mensaje.fyh = new Date().toLocaleString();
-    await messagesApi.save(mensaje);
-    io.sockets.emit("messages", await messagesApi.listAll());
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.static("public"));
+
+  /* -------------------------------- Server -------------------------------- */
+
+  const PORT = defaultValues.p;
+  const server = httpServer.listen(PORT, () => {
+    console.log(`Server is running on port ${server.address().port} - PID worker ${process.pid}`);
   });
-});
+  server.on("error", (error) => console.log(`Error en el servidor ${error}`));
 
-/* -------------------------------- Middlewares -------------------------------- */
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static("public"));
-
-/* -------------------------------- Server -------------------------------- */
-
-const PORT = defaultValues.p;
-const server = httpServer.listen(PORT, () => {
-  console.log(`Server is running on port ${server.address().port}`);
-});
-server.on("error", (error) => console.log(`Error en el servidor ${error}`));
-
-/*
+  /*
 https://www.iconfinder.com/free_icons
     npm init -y 
     npm install express body-parser express-handlebars socket.io
         "dev": "nodemon server.js"
 
 */
+}

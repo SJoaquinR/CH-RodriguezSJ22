@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js -p 8383",
+    "dev": "nodemon server.js -p 8383 CLUSTER",
+    "devforever": "forever start server.js -p 8383 CLUSTER",
     "create": "node ./containers/createTable.js"
   },
   "keywords": [],
