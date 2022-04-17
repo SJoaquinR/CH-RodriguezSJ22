@@ -1,7 +1,9 @@
 //PM2-------------
 //pm2 start server.js --name="server" --watch -i max -- 8081 CLUSTER
 //pm2 start server.js --name="server" --watch -- 8081 FORK
-//FOREVER-------------
+// ahora ya lo va a hacer mi codigo levantar el cluster
+//pm2 start server.js --name="server" --watch -- 8081 CLUSTER
+
 
 //tasklist /fi "imagename eq node.exe"    //check if node is running lista todos los procesos de node.js activos
  
@@ -53,6 +55,7 @@ const { Server: Socket } = require("socket.io");
 
 const ContainerMemory = require("./containers/memoryDB.js");
 const containerMessage = require("./containers/messageDB.js");
+const { log } = require("console");
 
 /* -------------------------------- Instancia de Express ------------------------ */
 const app = express();
@@ -285,6 +288,11 @@ if (modoCluster && cluster.isMaster) {
     res.send(sistema);
   });
 
+  app.get("/api/randoms", (req, res) => {
+    console.log(`port: ${PORT}`);
+    res.send(`Nginex en ${PORT} - en el PID ${process.pid}`);
+  });
+
   /*==================== Data Mocks====================*/
 
   function generarRandomObjeto() {
@@ -336,7 +344,7 @@ if (modoCluster && cluster.isMaster) {
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.use(express.static("public"));
+  // app.use(express.static("public"));   //Lo comento ya que ahora lo uso desde Nginex
 
   /* -------------------------------- Server -------------------------------- */
 
