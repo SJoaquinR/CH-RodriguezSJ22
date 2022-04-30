@@ -57,8 +57,14 @@ const ContainerMemory = require("./containers/memoryDB.js");
 const containerMessage = require("./containers/messageDB.js");
 const { log } = require("console");
 
+const compression = require('compression');
+const logger = require('./containers/logger.js');
+
 /* -------------------------------- Instancia de Express ------------------------ */
 const app = express();
+// Comprimir todas las respuestas HTTP
+app.use(compression());
+
 const httpServer = new HttpServer(app);
 const io = new Socket(httpServer);
 
@@ -117,10 +123,9 @@ app.use(passport.session());
 /*============================[Base de Datos]============================*/
 const usuariosDB = [];
 
-
 if (modoCluster && cluster.isMaster) {
   console.log(`Numeros de procesadores ${numCPUs}`);
-  console.log(`Master ${process.pid} is running`);
+  console.log(`PID Master ${process.pid} is running`);
 
   for (let i = 0; i < numCPUs; i++) {
     cluster.fork();
@@ -135,6 +140,7 @@ if (modoCluster && cluster.isMaster) {
   });
 } else {
   app.get("/", (req, res) => {
+    logger.info('Ruta Base');
     if (req.session.nameUser) {
       res.redirect("/datos");
     } else {
@@ -162,11 +168,13 @@ if (modoCluster && cluster.isMaster) {
   /*-------- --------------------*/
 
   app.get("/login", (req, res) => {
+    logger.info('Ruta GET Login');
     res.render("pages/login.ejs");
   });
 
   app.post("/login", (req, res) => {
     const { nameUser, password } = req.body;
+    logger.info('Ruta Login POST: Parámetros %s y %s correctos para la suma', nameUser, password);
 
     const existeUsuario = usuariosDB.find(
       (usuario) => usuario.nameUser == nameUser && usuario.password == password
@@ -192,11 +200,13 @@ if (modoCluster && cluster.isMaster) {
   });
 
   app.get("/register", (req, res) => {
+    logger.info('Ruta register GET');
     res.render("pages/register");
   });
 
   app.post("/register", (req, res) => {
     const { nameUser, password } = req.body;
+    logger.info('Ruta Login POST: Parámetros %s y %s correctos para la suma', nameUser, password);
     const newUsuario = usuariosDB.find(
       (usuario) => usuario.nameUser == nameUser
     );
@@ -210,6 +220,7 @@ if (modoCluster && cluster.isMaster) {
   });
 
   app.get("/datos", (req, res) => {
+    logger.info('Ruta datos GET');
     if (req.isAuthenticated()) {
       const datosUsuario = {
         nombre: req.user.displayName,
@@ -255,6 +266,7 @@ if (modoCluster && cluster.isMaster) {
   });
 
   app.get("/logout", (req, res) => {
+    logger.info('Ruta logout GET');
     const nameUser = req.session?.nameUser;
     if (nameUser) {
       req.session.destroy((err) => {
@@ -273,6 +285,7 @@ if (modoCluster && cluster.isMaster) {
   });
 
   app.get("/info", (req, res) => {
+    logger.info('Ruta info GET');
     // res.send(req.sessionID);
     const sistema = [
       `Argumento de entrada: ${process.argv}`,
@@ -285,13 +298,27 @@ if (modoCluster && cluster.isMaster) {
       `Numeros de procesadores ${numCPUs}`,
     ];
 
+    const primes = []
+    const max = Number(req.query.max) || 1000
+    for (let i = 1; i <= max; i++) {
+        if (isPrime(i)) primes.push(i)
+    }
+    //res.json(primes)
+
     res.send(sistema);
   });
 
   app.get("/api/randoms", (req, res) => {
+    logger.info('Ruta randoms GET');
     console.log(`port: ${PORT}`);
     res.send(`Nginex en ${PORT} - en el PID ${process.pid}`);
   });
+
+  app.get('*', (req, res) => {
+    let { url, method } = req
+    logger.warn('Ruta %s %s no implementada', url, method)
+    res.send(`Ruta ${method} ${url} no está implementada`)
+})
 
   /*==================== Data Mocks====================*/
 
@@ -361,4 +388,18 @@ https://www.iconfinder.com/free_icons
         "dev": "nodemon server.js"
 
 */
+}
+
+function isPrime(num) {
+  if ([2, 3].includes(num)) return true;
+  else if ([2, 3].some(n => num % n == 0)) return false;
+  else {
+      let i = 5, w = 2;
+      while ((i ** 2) <= num) {
+          if (num % i == 0) return false
+          i += w
+          w = 6 - w
+      }
+  }
+  return true
 }
